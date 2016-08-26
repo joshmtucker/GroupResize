@@ -1,43 +1,40 @@
-{GroupResize} = require "GroupResize"
+{GroupResizeLayer} = require "GroupResize"
+GroupResizeLayer.mixin(Layer)
 
 Screen.backgroundColor = "#009688"
 
-bg = new Layer 
-	width: 480
-	height: 380
+appBar = new Layer
+	width: Screen.width
+	height: 48
+	backgroundColor: Utils.randomColor(1)
+	
+summaryHeader = new Layer
+	y: appBar.maxY
+	width: Screen.width
+	height: 228
+	backgroundColor: Utils.randomColor(1)
+	
+writeArea = new Layer 
+	maxX: Screen.width
+	y: summaryHeader.maxY
+	width: Screen.width/2
+	height: Screen.height - (appBar.height + summaryHeader.height) 
+	
+writeCard = new Layer 
+	width: writeArea.width * .75
+	height: writeArea.height * .75
 	backgroundColor: "white"
 	borderRadius: 2
-	resizeChildren: true
-
-bg.states.add
-	small: width: 480, height: 380, x: (Screen.width/2) - (480/2), y: (Screen.height/2) - (380/2)
-	large: width: 680, height: 580, x: (Screen.width/2) - (680/2), y: (Screen.height/2) - (580/2)
-bg.states.switchInstant "small"
-bg.filteredStates = bg.states._orderedStates.splice(1)
-bg.states.switchInstant "small"
-
-header = new Layer 
-	height: 48
-	width: bg.width
-	parent: bg
-	resizing: "resize"
-	resizeChildren: true
-	
-btn = new Layer 
-	width: 48
-	height: 48
-	maxX: header.width
-	height: header.height
-	parent: header
+	parent: writeArea
 	resizing: "resize"
 	
-content = new Layer
-	x: 16 
-	y: header.maxY + 16
-	width: bg.width - 32
-	height: (bg.height - header.height) - 32
-	parent: bg
-	resizing: "float"
+writeCard.center()
+
+Framer.Device.phone.on "change:size", ->
+	appBar.width = @width
+	summaryHeader.width = @width
 	
-bg.onClick ->
-	@states.next(@filteredStates)
+	writeArea.props = 
+		maxX: @width
+		width: @width - (@width/2)
+		height: @height - (appBar.height+summaryHeader.height)
