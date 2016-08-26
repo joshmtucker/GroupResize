@@ -1,14 +1,13 @@
-defaults = 
-	resizeChildren: false
-	resizing: "none"
-	
-resizingTypes = ["none", "stretchWidth", "stretchHeight", "stretch", "pinX", "pinY", "pin", "resizeWidth", "resizeHeight", "resize", "floatX", "floatY", "float"]
+defaults =
+	props: resizeChildren: true, resizing: "none" 
+	resizingTypes: ["none", "stretchWidth", "stretchHeight", "stretch", "pinX", "pinY", "pin", "resizeWidth", "resizeHeight", "resize", "floatX", "floatY", "float"]
 
-class GroupResize extends Layer
-	constructor: (options={}) ->
-		for key, value of defaults
-			options[key] ?= value 
-		super options
+class exports.GroupResizeLayer extends Layer
+	constructor: (opts={}) ->
+		# Set defaults
+		for key, value of defaults.props
+			opts[key] ?= value 
+		super opts
 	
 	# FUNCTIONS – Parent	
 	_onResize: ->
@@ -16,9 +15,8 @@ class GroupResize extends Layer
 		return if @children.length is 0
 		
 		# Resize children
-		for child in @children
-			if child.resizing isnt "none"
-				@_resizeChild(child)
+		for child in @children when child.resizing isnt "none"
+			@_resizeChild(child)
 				
 	# FUNCTIONS – Child
 	_setResizeProps: ->
@@ -50,70 +48,58 @@ class GroupResize extends Layer
 			maxY: @parent.height - @maxY
 					
 	_resizeChild: (child) ->
-		props = {}
+		updatedProps = {}
 		
 		# FLOAT
-		# floatX 
-		props.floatX = 
+		updatedProps.floatX = 
 			midX: child.parent.width * child._resizeProps.float.midX
 		
-		#floatY	
-		props.floatY = 
+		updatedProps.floatY = 
 			midY: child.parent.height * child._resizeProps.float.midY
 		
-		# float
-		props.float = 
+		updatedProps.float = 
 			midX: child.parent.width * child._resizeProps.float.midX
 			midY: child.parent.height * child._resizeProps.float.midY
 		
 		# RESIZE
-		# resizeWidth
-		props.resizeWidth = 
+		updatedProps.resizeWidth = 
 			width: child.parent.width * child._resizeProps.resize.width
-			midX: props.float.midX
-		
-		# resizeHeight	
-		props.resizeHeight = 
+			midX: updatedProps.float.midX
+			
+		updatedProps.resizeHeight = 	
 			height: child.parent.height * child._resizeProps.resize.height
-			midY: props.float.midY
+			midY: updatedProps.float.midY
 		
-		# resize
-		props.resize = 
+		updatedProps.resize = 
 			width: child.parent.width * child._resizeProps.resize.width
 			height: child.parent.height * child._resizeProps.resize.height
-			midX: props.float.midX
-			midY: props.float.midY
+			midX: updatedProps.float.midX
+			midY: updatedProps.float.midY
 		
-		# STRETCH 
-		# stretchWidth
-		props.stretchWidth = 
-			width: props.resize.width
-		
-		# stretchHeight	
-		props.stretchHeight = 
-			height: props.resize.height
-		
-		# stretch		
-		props.stretch = 
-			width: props.resize.width
-			height: props.resize.height
+		# STRETCH
+		updatedProps.stretchWidth = 
+			width: updatedProps.resize.width
+	
+		updatedProps.stretchHeight = 
+			height: updatedProps.resize.height
+	
+		updatedProps.stretch = 
+			width: updatedProps.resize.width
+			height: updatedProps.resize.height
 			
 		# PIN 
-		# pinX
-		props.pinX = 
+		updatedProps.pinX = 
 			maxX: child.parent.width - child._resizeProps.pin.maxX
 		
-		# pinY	
-		props.pinY = 
+		updatedProps.pinY = 
 			maxY: child.parent.height - child._resizeProps.pin.maxY
 		
-		# pin
-		props.pin = 
+		updatedProps.pin = 
 			maxX: child.parent.width - child._resizeProps.pin.maxX
 			maxY: child.parent.height - child._resizeProps.pin.maxY
 			
-		# Set props
-		for key, value of props[child.resizing]
+		# Set using updatedProps
+		for key, value of updatedProps[child.resizing]
 			child[key] = value
 			
 	# DEFINITIONS – Parent	
@@ -122,14 +108,12 @@ class GroupResize extends Layer
 		set: (value) ->
 			# Error if not boolean
 			if _.isBoolean(value) is false 
-				throw Error "'resizeChildren' must be true or false"
+				throw Error "ResizeChildren must be true or false"
 				
 			# Add or remove listener
-			if value
-				@on("change:size", @_onResize)
-			else
-				@off("change:size", @_onResize)
-				
+			if value then @on("change:size", @_onResize) else @off("change:size", @_onResize)	
+			
+			# Set value
 			@_resizeChildren = value
 			
 	# DEFINITIONS – Child 
@@ -137,27 +121,20 @@ class GroupResize extends Layer
 		get: -> @_resizing
 		set: (value) ->
 			# Error if not a supported type
-			if _.indexOf(resizingTypes, value) is -1
+			if _.indexOf(defaults.resizingTypes, value) is -1
 				throw Error "'#{value}' isn't a supported resizing type"
 				
-			# Add or remove listener
-			if value isnt "none"
-				@on("change:frame", @_setResizeProps)
-				@on("change:parent", @_setResizeProps)
-			else
-				@off("change:frame", @_setResizeProps)
-				@off("change:parent", @_setResizeProps)
-				
+			# Event listeners
+			@on("change:frame", @_setResizeProps)
+			@on("change:parent", @_setResizeProps)
+			
 			# Set resize props
 			@_setResizeProps()
 			
+			# Set value
 			@_resizing = value
-			
-	@define "_resizeProps",
-		get: -> @_rProps
-		set: (value) -> @_rProps = value
 		
-	# MIXIN
+	# Mixin
 	@mixin: (Class) ->
 		# Fix for MobileScrollLayer
 		cleanClassName = if /layer/i.test Class.name then "Layer" else Class.name
@@ -165,7 +142,7 @@ class GroupResize extends Layer
 		capitalizeFirstLetter = (string) ->
 			return string.charAt(0).toUpperCase() + string.slice(1)
 		
-		for key, value of defaults
+		for key, value of defaults.props
 			Framer.Defaults[cleanClassName][key] = value 
 			
 			Class.define key,
@@ -176,7 +153,3 @@ class GroupResize extends Layer
 		Class::_onResize = @::_onResize
 		Class::_setResizeProps = @::_setResizeProps
 		Class::_resizeChild = @::_resizeChild
-
-GroupResize.mixin(Layer)
-
-module?.exports = GroupResize
